@@ -1,0 +1,37 @@
+#端口
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+spring:
+  profiles:
+    active: dev
+  #项目名
+  application:
+    name: dazi-finder
+  #session配置1天
+  session:
+    timeout: 86400
+  #数据库配置
+  datasource:
+    driver-class-name: ${uc.datasource.driver-class-name}
+    url: jdbc:mysql://${uc.datasource.host}:${uc.datasource.port}/${uc.datasource.database}
+    username: ${uc.datasource.username}
+    password: ${uc.datasource.password}
+mybatis-plus:
+  configuration:
+    #关闭驼峰映射
+    map-underscore-to-camel-case: false
+    #mybatis日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: isDelete # 全局逻辑删除的实体字段名(since 3.3.0,配置后可以忽略不配置步骤2)
+      logic-delete-value: 1 # 逻辑已删除值(默认为 1)
+      logic-not-delete-value: 0 # 逻辑未删除值(默认为 0)
+uc:
+  #阿里云OSS
+  alioss:
+    endpoint: ${uc.alioss.endpoint}
+    bucket-name: ${uc.alioss.bucket-name}
+    folder-name: ${uc.alioss.folder-name}
