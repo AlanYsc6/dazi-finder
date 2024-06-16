@@ -58,6 +58,10 @@ public class User implements Serializable {
      */
     private String planetCode;
     /**
+     * 标签
+     */
+    private String tags;
+    /**
      * 用户状态，默认0：正常
      */
     private Integer userStatus;

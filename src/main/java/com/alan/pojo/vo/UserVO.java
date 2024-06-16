@@ -60,4 +60,8 @@ public class UserVO implements Serializable {
      * 星球编号
      */
     private String planetCode;
+    /**
+     * 标签
+     */
+    private String tags;
 }

@@ -1,10 +1,14 @@
 package com.alan.service;
 
 import com.alan.pojo.domain.User;
+import com.alan.pojo.vo.UserVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -81,5 +85,14 @@ class UserServiceTest {
     void testEq(){
         User userAccountRepeat = userService.getOne(new LambdaQueryWrapper<User>().eq(User::getUserAccount, "ALAN"));
         System.out.println(userAccountRepeat);
+    }
+    /**
+     * 测试按标签查询
+     */
+    @Test
+    void testSearchUserByTags(){
+        List<String> tagList = Arrays.asList("java", "c++");
+        List<UserVO> users = userService.searUserByTags(tagList);
+        System.out.println(users);
     }
 }

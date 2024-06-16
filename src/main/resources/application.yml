@@ -18,6 +18,8 @@ spring:
     url: jdbc:mysql://${uc.datasource.host}:${uc.datasource.port}/${uc.datasource.database}
     username: ${uc.datasource.username}
     password: ${uc.datasource.password}
+  main:
+    banner-mode: off
 mybatis-plus:
   configuration:
     #关闭驼峰映射
