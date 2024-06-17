@@ -37,3 +37,14 @@ uc:
     endpoint: ${uc.alioss.endpoint}
     bucket-name: ${uc.alioss.bucket-name}
     folder-name: ${uc.alioss.folder-name}
+knife4j:
+  enable: true
+  openapi:
+    title: 找搭子API文档
+    description: 接口文档
+    version: v1.0
+    group:
+      default:
+        api-rule: package
+        api-rule-resources:
+          - com.alan.controller
