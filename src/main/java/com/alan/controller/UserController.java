@@ -16,6 +16,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +43,7 @@ import static com.alan.constant.UserConstant.USER_STATE_LOGIN;
 @Slf4j
 @RestController
 @RequestMapping("/user")
+@CrossOrigin(origins = "http://localhost:3000",allowCredentials = "true")
 public class UserController {
     @Resource
     private UserService userService;
@@ -58,15 +60,16 @@ public class UserController {
             //截取原始文件名的后缀
             String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             //构建新文件名称
-            String objectName = aliOssUtil.getFolderName()+ UUID.randomUUID().toString() + extension;
+            String objectName = aliOssUtil.getFolderName() + UUID.randomUUID().toString() + extension;
             //文件请求路径
             String filePath = aliOssUtil.upload(file.getBytes(), objectName);
             return ResultUtils.success(filePath);
         } catch (IOException e) {
-            log.error("文件上传失败:{}",e);
+            log.error("文件上传失败:{}", e);
         }
         return ResultUtils.error("文件上传失败");
     }
+
     @GetMapping("/regd")
     public List<RegdVO> getRegd() {
         List<RegdVO> regdVOList = new ArrayList<>();
@@ -235,6 +238,20 @@ public class UserController {
         });
         log.info("query succeeded");
         return ResultUtils.success(userVos);
+    }
+
+    /**
+     * 根据标签查询用户
+     * @param tagNameList 标签列表
+     * @return 用户列表
+     */
+    @GetMapping("/search/tags")
+    public BaseResponse<List<UserVO>> searchUsersByTags(@RequestParam(required = false) List<String> tagNameList) {
+        if (CollectionUtils.isEmpty(tagNameList)) {
+            throw new BusinessException(ErrorCode.PARAM_NULL);
+        }
+        List<UserVO> userList = userService.searUserByTags(tagNameList);
+        return ResultUtils.success(userList);
     }
 
     /**
