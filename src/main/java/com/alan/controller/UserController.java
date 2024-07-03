@@ -17,6 +17,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.alan.constant.UserConstant.USER_STATE_LOGIN;
@@ -48,6 +51,8 @@ public class UserController {
     private UserService userService;
     @Autowired
     private AliOssUtil aliOssUtil;
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
 
     //OSS文件上传
     @PostMapping("/upload")
@@ -281,6 +286,15 @@ public class UserController {
      */
     @GetMapping("/recommend")
     public BaseResponse<Page<UserVO>> recommendUsers(long pageSize, long pageNum, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String redisKey = String.format("dazi:user:recommend:%s", loginUser.getId());
+        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+        //如果有缓存，直接读缓存
+        Page<UserVO> userVOPageCache = (Page<UserVO>) valueOperations.get(redisKey);
+        if (userVOPageCache != null) {
+            return ResultUtils.success(userVOPageCache);
+        }
+        //无缓存，查数据库
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         Page<User> users = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
         List<UserVO> userVos = users.getRecords().stream().map(user -> {
@@ -295,6 +309,11 @@ public class UserController {
         userVoPage.setSize(users.getSize());
         userVoPage.setPages(users.getPages());
         userVoPage.setCurrent(users.getCurrent());
+        try {
+            valueOperations.set(redisKey, userVoPage, 1, TimeUnit.DAYS);
+        } catch (Exception e) {
+            log.error("redis set key error", e);
+        }
         return ResultUtils.success(userVoPage);
     }
 }
