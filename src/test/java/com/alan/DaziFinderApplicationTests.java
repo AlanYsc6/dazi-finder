@@ -4,13 +4,18 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
 import com.alan.pojo.vo.RegdVO;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RList;
+import org.redisson.api.RedissonClient;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 
 @SpringBootTest
 class DaziFinderApplicationTests {
+    @Resource
+    private RedissonClient redissonClient;
     /**
      * 测试md5加密
      */
@@ -44,4 +49,20 @@ class DaziFinderApplicationTests {
         regdVOS.forEach(System.out::println);
     }
 
+    /**
+     * redisson测试
+     */
+    @Test
+    void testRedisson(){
+        //本地内存
+        List<String> list =new ArrayList<>();
+        list.add("yan");
+        System.out.println("list:"+list.get(0));
+//        list.remove(0);
+        //redis内存
+        RList<String> rList = redissonClient.getList("test-list");
+//        rList.add("yan");
+        System.out.println("rList:"+rList.get(0));
+        rList.remove(0);
+    }
 }

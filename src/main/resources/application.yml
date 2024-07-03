@@ -28,6 +28,7 @@ spring:
     port: ${df.redis.port}
     password: ${df.redis.password}
     database: ${df.redis.database}
+    rdatabase: ${df.redis.rdatabase}
   main:
     banner-mode: off
 mybatis-plus:
