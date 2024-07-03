@@ -13,6 +13,7 @@ import com.alan.service.UserService;
 import com.alan.utils.AliOssUtil;
 import com.alan.utils.ResultUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,10 +30,9 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-import static com.alan.constant.UserConstant.USER_ROLE_ADMIN;
 import static com.alan.constant.UserConstant.USER_STATE_LOGIN;
 
 /**
@@ -43,7 +43,6 @@ import static com.alan.constant.UserConstant.USER_STATE_LOGIN;
 @Slf4j
 @RestController
 @RequestMapping("/user")
-@CrossOrigin(origins = "http://localhost:3000",allowCredentials = "true")
 public class UserController {
     @Resource
     private UserService userService;
@@ -193,34 +192,15 @@ public class UserController {
     }
 
     /**
-     * 用户鉴权
-     *
-     * @param request 请求信息
-     * @return 鉴权结果
-     */
-    private Boolean isAdmin(HttpServletRequest request) {
-        Object userObj = request.getSession().getAttribute(USER_STATE_LOGIN);
-        if (userObj == null) {
-            log.info("user is not login");
-            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
-        }
-        UserVO userVO = (UserVO) userObj;
-        return Objects.equals(userVO.getUserRole(), USER_ROLE_ADMIN);
-    }
-
-
-    /**
      * 查询用户
      *
      * @param username 昵称
      * @param request  请求信息
      * @return 用户集合
      */
-
     @GetMapping("/search")
     public BaseResponse<List<UserVO>> userSearchByName(String username, HttpServletRequest request) {
-
-        if (!isAdmin(request)) {
+        if (!userService.isAdmin(request)) {
             log.info("user is not admin");
             throw new BusinessException(ErrorCode.NO_AUTH, "用户无权限");
         }
@@ -242,6 +222,7 @@ public class UserController {
 
     /**
      * 根据标签查询用户
+     *
      * @param tagNameList 标签列表
      * @return 用户列表
      */
@@ -268,11 +249,52 @@ public class UserController {
             log.info("id is invalid");
             throw new BusinessException(ErrorCode.PARAM_ERROR, "用户id不合法");
         }
-        if (!isAdmin(request)) {
+        if (!userService.isAdmin(request)) {
             log.info("user is not admin");
             throw new BusinessException(ErrorCode.NO_AUTH, "用户无权限");
         }
         boolean remove = userService.removeById(id);
         return ResultUtils.success(remove);
+    }
+
+    /**
+     * 修改用户
+     *
+     * @param user 待修改用户信息
+     * @return 修改结果
+     */
+    @PostMapping("/update")
+    public BaseResponse<Integer> updateUser(User user, HttpServletRequest request) {
+        if (user == null) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        Integer result = userService.updateUser(user, loginUser);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 推荐用户
+     *
+     * @param request 请求信息
+     * @return 用户集合
+     */
+    @GetMapping("/recommend")
+    public BaseResponse<Page<UserVO>> recommendUsers(long pageSize, long pageNum, HttpServletRequest request) {
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        Page<User> users = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+        List<UserVO> userVos = users.getRecords().stream().map(user -> {
+            UserVO userVO = new UserVO();
+            BeanUtils.copyProperties(user, userVO);
+            return userVO;
+        }).collect(Collectors.toList());
+        log.info("query succeeded");
+        Page<UserVO> userVoPage = new Page<>();
+        userVoPage.setRecords(userVos);
+        userVoPage.setTotal(users.getTotal());
+        userVoPage.setSize(users.getSize());
+        userVoPage.setPages(users.getPages());
+        userVoPage.setCurrent(users.getCurrent());
+        return ResultUtils.success(userVoPage);
     }
 }

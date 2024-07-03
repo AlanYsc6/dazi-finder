@@ -64,4 +64,8 @@ public class UserVO implements Serializable {
      * 标签
      */
     private String tags;
+    /**
+     * 简介
+     */
+    private String profile;
 }

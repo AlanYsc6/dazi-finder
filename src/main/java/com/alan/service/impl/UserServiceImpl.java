@@ -22,7 +22,9 @@ import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+import static com.alan.constant.UserConstant.USER_ROLE_ADMIN;
 import static com.alan.constant.UserConstant.USER_STATE_LOGIN;
 
 /**
@@ -143,7 +145,76 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         return userVOList;
     }
-
+    /**
+     * 更新用户
+     * @param user 用户信息
+     * @param loginUser  请求信息
+     * @return 更新状态
+     */
+    @Override
+    public int updateUser(User user,User loginUser) {
+        long userId = user.getId();
+        if(userId<=0){
+            throw new BusinessException(ErrorCode.PARAM_ERROR,"用户id不合法");
+        }
+        //管理员可以更新任意用户
+        //非管理员只能更新自己
+        if(!isAdmin(loginUser)&&userId!=loginUser.getId()){
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+        User oldUser = userMapper.selectById(userId);
+        if(oldUser==null){
+            throw new BusinessException(ErrorCode.NULL_ERROR,"用户不存在");
+        }
+        return userMapper.updateById(user);
+    }
+    /**
+     * 用户鉴权
+     *
+     * @param request 请求信息
+     * @return 鉴权结果
+     */
+    @Override
+    public boolean isAdmin(HttpServletRequest request) {
+        Object userObj = request.getSession().getAttribute(USER_STATE_LOGIN);
+        if (userObj == null) {
+            log.info("user is not login");
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        UserVO userVO = (UserVO) userObj;
+        return Objects.equals(userVO.getUserRole(), USER_ROLE_ADMIN);
+    }
+    /**
+     * 用户鉴权
+     *
+     * @param loginUser 当前用户
+     * @return 鉴权结果
+     */
+    @Override
+    public boolean isAdmin(User loginUser) {
+        if (loginUser == null) {
+            log.info("loginUser is null");
+            throw new BusinessException(ErrorCode.PARAM_NULL, "用户未登录");
+        }
+        return Objects.equals(loginUser.getUserRole(), USER_ROLE_ADMIN);
+    }
+    /**
+     * 获取登录用户
+     *
+     * @param request 请求信息
+     * @return 登录用户
+     */
+    @Override
+    public User getLoginUser(HttpServletRequest request) {
+        if(request == null){
+            return null;
+        }
+        Object userObj = request.getSession().getAttribute(USER_STATE_LOGIN);
+        if (userObj==null){
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        return (User) userObj;
+    }
     /**
      * 用户登录
      *
