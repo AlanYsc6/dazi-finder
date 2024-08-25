@@ -122,7 +122,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     }
 
     @Override
-    public List<TeamUserVO> listTeams(TeamDTO teamDTO, boolean isAdmin) {
+    public List<TeamUserVO> listTeams(TeamDTO teamDTO, Boolean isAdmin) {
         QueryWrapper<Team> queryWrapper = new QueryWrapper<>();
         // 组合查询条件
         if (teamDTO != null) {
@@ -209,7 +209,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new BusinessException(ErrorCode.NULL_ERROR, "队伍不存在");
         }
         // 只有管理员或者队伍的创建者可以修改
-        if (oldTeam.getUserId() != loginUser.getId() && !userService.isAdmin(loginUser)) {
+        if (!oldTeam.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH);
         }
         TeamStatusEnum statusEnum = TeamStatusEnum.getEnumByValue(teamDTO.getStatus());
@@ -248,7 +248,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         // 该用户已加入的队伍数量
         long userId = loginUser.getId();
         // 只有一个线程能获取到锁
-        RLock lock = redissonClient.getLock("yupao:join_team");
+        RLock lock = redissonClient.getLock("alan:join_team");
         try {
             // 抢到锁并执行
             while (true) {
@@ -351,7 +351,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         Team team = getTeamById(id);
         long teamId = team.getId();
         // 校验你是不是队伍的队长
-        if (team.getUserId() != loginUser.getId()) {
+        if (!team.getUserId().equals(loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH, "无访问权限");
         }
         // 移除所有加入队伍的关联信息

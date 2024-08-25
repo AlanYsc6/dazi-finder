@@ -115,21 +115,27 @@ public class TeamController {
     /**
      * 修改队伍
      *
-     * @param team 队伍信息
+     * @param teamDTO 队伍信息
+     * @param request 请求信息
      * @return 修改成功后返回队伍id
      */
     @PostMapping("/update")
-    public BaseResponse<Long> updateTeam(@RequestBody Team team) {
-        log.info("team: {}", team);
-        if (team == null) {
+    public BaseResponse<Long> updateTeam(@RequestBody TeamDTO teamDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        log.info("team: {}, loginUser: {}", teamDTO, loginUser);
+        if (teamDTO == null) {
             log.info("team is null");
             throw new BusinessException(ErrorCode.PARAM_ERROR, "队伍信息不能为空");
         }
-        boolean update = teamService.updateById(team);
+        if (loginUser == null) {
+            log.info("loginUser is null");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "登录用户信息不能为空");
+        }
+        boolean update = teamService.updateTeam(teamDTO, loginUser);
         if (!update) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "修改队伍失败");
         }
-        return ResultUtils.success(team.getId());
+        return ResultUtils.success(teamDTO.getId());
     }
 
     /**
@@ -159,15 +165,15 @@ public class TeamController {
      * @return 队伍列表信息
      */
     @GetMapping("/list")
-    public BaseResponse<List<TeamUserVO>> listTeams(TeamDTO teamDTO,Boolean isAdmin) {
+    public BaseResponse<List<TeamUserVO>> listTeams(TeamDTO teamDTO, HttpServletRequest request) {
         log.info("teamDTO: {}", teamDTO);
         if (teamDTO == null) {
             log.info("teamDTO is null");
             throw new BusinessException(ErrorCode.PARAM_ERROR, "查询队伍请求信息不能为空");
         }
-        List<TeamUserVO> list = teamService.listTeams(teamDTO,isAdmin);
+        List<TeamUserVO> list = teamService.listTeams(teamDTO, userService.isAdmin(request));
         if (list == null) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "查询队伍失败");
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "查询队伍列表为空");
         }
         return ResultUtils.success(list);
     }
@@ -198,6 +204,85 @@ public class TeamController {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "查询队伍失败");
         }
         return ResultUtils.success(teamPage);
+    }
+
+
+    /**
+     * 加入队伍
+     *
+     * @param teamDTO 加入队伍请求信息
+     * @param request 请求信息
+     * @return 加入成功返回true
+     */
+    @PostMapping("/join")
+    public BaseResponse<Boolean> joinTeam(@RequestBody TeamDTO teamDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        log.info("teamDTO: {}, loginUser: {}", teamDTO, loginUser);
+        if (teamDTO == null) {
+            log.info("teamDTO is null");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "加入队伍请求信息不能为空");
+        }
+        if (loginUser == null) {
+            log.info("loginUser is null");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "登录用户信息不能为空");
+        }
+        boolean join = teamService.joinTeam(teamDTO, loginUser);
+        if (!join) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "加入队伍失败");
+        }
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 退出队伍
+     *
+     * @param teamDTO 退出队伍请求信息
+     * @param request 请求信息
+     * @return 退出成功返回true
+     */
+    @PostMapping("/quit")
+    public BaseResponse<Boolean> quitTeam(@RequestBody TeamDTO teamDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        log.info("teamDTO: {}, loginUser: {}", teamDTO, loginUser);
+        if (teamDTO == null) {
+            log.info("teamDTO is null");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "退出队伍请求信息不能为空");
+        }
+        if (loginUser == null) {
+            log.info("loginUser is null");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "登录用户信息不能为空");
+        }
+        boolean quit = teamService.quitTeam(teamDTO, loginUser);
+        if (!quit) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "退出队伍失败");
+        }
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 删除队伍
+     *
+     * @param teamDTO 删除队伍请求信息
+     * @param request 请求信息
+     * @return 删除成功返回true
+     */
+    @PostMapping("/delete")
+    public BaseResponse<Boolean> deleteTeam(@RequestBody TeamDTO teamDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        log.info("teamDTO: {}, loginUser: {}", teamDTO, loginUser);
+        if (teamDTO == null) {
+            log.info("teamDTO is null");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "删除队伍请求信息不能为空");
+        }
+        if (loginUser == null) {
+            log.info("loginUser is null");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "登录用户信息不能为空");
+        }
+        boolean delete = teamService.deleteTeam(teamDTO.getId(), loginUser);
+        if (!delete) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍失败");
+        }
+        return ResultUtils.success(true);
     }
 
 }
