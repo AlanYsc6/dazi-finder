@@ -1,10 +1,10 @@
 package com.alan.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.alan.mapper.UserTeamMapper;
 import com.alan.pojo.domain.UserTeam;
 import com.alan.service.UserTeamService;
-import com.alan.mapper.UserTeamMapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;

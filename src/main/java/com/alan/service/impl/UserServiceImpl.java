@@ -1,5 +1,6 @@
 package com.alan.service.impl;
 
+import cn.hutool.core.lang.Pair;
 import cn.hutool.core.lang.Validator;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
@@ -9,21 +10,25 @@ import com.alan.mapper.UserMapper;
 import com.alan.pojo.domain.User;
 import com.alan.pojo.vo.UserVO;
 import com.alan.service.UserService;
+import com.alan.utils.AlgorithmUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-
+import java.util.stream.Collectors;
 import static com.alan.constant.UserConstant.USER_ROLE_ADMIN;
 import static com.alan.constant.UserConstant.USER_STATE_LOGIN;
 
@@ -35,9 +40,11 @@ import static com.alan.constant.UserConstant.USER_STATE_LOGIN;
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
-        implements UserService {
+    implements UserService {
+
     @Resource
     private UserMapper userMapper;
+
     private static final String SALT = "ysc";
 
     /**
@@ -145,29 +152,32 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         return userVOList;
     }
+
     /**
      * 更新用户
-     * @param user 用户信息
-     * @param loginUser  请求信息
+     *
+     * @param user      用户信息
+     * @param loginUser 请求信息
      * @return 更新状态
      */
     @Override
-    public int updateUser(User user,User loginUser) {
+    public int updateUser(User user, User loginUser) {
         long userId = user.getId();
-        if(userId<=0){
-            throw new BusinessException(ErrorCode.PARAM_ERROR,"用户id不合法");
+        if (userId <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "用户id不合法");
         }
         //管理员可以更新任意用户
         //非管理员只能更新自己
-        if(!isAdmin(loginUser)&&userId!=loginUser.getId()){
+        if (!isAdmin(loginUser) && userId != loginUser.getId()) {
             throw new BusinessException(ErrorCode.NO_AUTH);
         }
         User oldUser = userMapper.selectById(userId);
-        if(oldUser==null){
-            throw new BusinessException(ErrorCode.NULL_ERROR,"用户不存在");
+        if (oldUser == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR, "用户不存在");
         }
         return userMapper.updateById(user);
     }
+
     /**
      * 用户鉴权
      *
@@ -184,6 +194,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         UserVO userVO = (UserVO) userObj;
         return Objects.equals(userVO.getUserRole(), USER_ROLE_ADMIN);
     }
+
     /**
      * 用户鉴权
      *
@@ -198,6 +209,61 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         return Objects.equals(loginUser.getUserRole(), USER_ROLE_ADMIN);
     }
+
+    @Override
+    public List<UserVO> matchUsers(long num, User loginUser) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("id", "tags");
+        queryWrapper.isNotNull("tags");
+        List<User> userList = this.list(queryWrapper);
+        String tags = loginUser.getTags();
+        Gson gson = new Gson();
+        List<String> tagList = gson.fromJson(tags, new TypeToken<List<String>>() {
+        }.getType());
+        // 用户列表的下标 => 相似度
+        List<Pair<User, Long>> list = new ArrayList<>();
+        // 依次计算所有用户和当前用户的相似度
+        for (int i = 0; i < userList.size(); i++) {
+            User user = userList.get(i);
+            String userTags = user.getTags();
+            // 无标签或者为当前用户自己
+            if (StringUtils.isBlank(userTags) || user.getId() == loginUser.getId()) {
+                continue;
+            }
+            List<String> userTagList = gson.fromJson(userTags, new TypeToken<List<String>>() {
+            }.getType());
+            // 计算分数
+            long distance = AlgorithmUtils.minDistance(tagList, userTagList);
+            list.add(new Pair<>(user, distance));
+        }
+        // 按编辑距离由小到大排序
+        List<Pair<User, Long>> topUserPairList = list.stream()
+            .sorted((a, b) -> (int) (a.getValue() - b.getValue()))
+            .limit(num)
+            .collect(Collectors.toList());
+        // 原本顺序的 userId 列表
+        List<Long> userIdList = topUserPairList.stream().map(pair -> pair.getKey().getId()).collect(Collectors.toList());
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        userQueryWrapper.in("id", userIdList);
+        // 1, 3, 2
+        // User1、User2、User3
+        // 1 => User1, 2 => User2, 3 => User3
+        Map<Long, List<UserVO>> userIdUserListMap = this.list(userQueryWrapper)
+            .stream()
+            .map(user -> {
+                UserVO userVO = new UserVO();
+                BeanUtils.copyProperties(user, userVO);
+                return userVO;
+            })
+            .collect(Collectors.groupingBy(UserVO::getId));
+        List<UserVO> finalUserList = new ArrayList<>();
+        for (Long userId : userIdList) {
+            finalUserList.add(userIdUserListMap.get(userId).get(0));
+        }
+        return finalUserList;
+    }
+
+
     /**
      * 获取登录用户
      *
@@ -206,15 +272,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      */
     @Override
     public User getLoginUser(HttpServletRequest request) {
-        if(request == null){
+        if (request == null) {
             return null;
         }
         Object userObj = request.getSession().getAttribute(USER_STATE_LOGIN);
-        if (userObj==null){
+        if (userObj == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
         return (User) userObj;
     }
+
     /**
      * 用户登录
      *

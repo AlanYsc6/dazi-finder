@@ -68,4 +68,7 @@ public interface UserService extends IService<User> {
      */
     boolean isAdmin(HttpServletRequest request);
     boolean isAdmin(User loginUser);
+
+    List<UserVO> matchUsers(long num, User user);
+
 }
